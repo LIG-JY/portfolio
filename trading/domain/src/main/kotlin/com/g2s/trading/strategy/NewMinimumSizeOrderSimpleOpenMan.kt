@@ -3,12 +3,12 @@ package com.g2s.trading.strategy
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.DoubleNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.g2s.trading.indicator.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
 import com.g2s.trading.event.StrategyEvent
 import com.g2s.trading.event.TradingEvent
 import com.g2s.trading.account.AccountUseCase
 import com.g2s.trading.common.ObjectMapperProvider
-import com.g2s.trading.indicator.indicator.CandleStick
+import com.g2s.trading.indicator.CandleStick.CandleStick
 import com.g2s.trading.lock.LockUsage
 import com.g2s.trading.lock.LockUseCase
 import com.g2s.trading.openman.AnalyzeReport

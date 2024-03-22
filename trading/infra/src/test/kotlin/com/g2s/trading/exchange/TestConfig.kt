@@ -1,7 +1,7 @@
 package com.g2s.trading.exchange
 
 import com.binance.connector.futures.client.impl.UMFuturesClientImpl
-import com.g2s.trading.indicator.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

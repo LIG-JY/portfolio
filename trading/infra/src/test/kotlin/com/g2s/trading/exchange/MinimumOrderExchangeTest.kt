@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.DoubleNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.g2s.trading.common.ObjectMapperProvider
-import com.g2s.trading.indicator.indicator.CandleStick
-import com.g2s.trading.indicator.indicator.Interval
+import com.g2s.trading.indicator.CandleStick.CandleStick
+import com.g2s.trading.indicator.CandleStick.Interval
 import com.g2s.trading.openman.AnalyzeReport
 import com.g2s.trading.order.OrderSide
 import com.g2s.trading.symbol.Symbol

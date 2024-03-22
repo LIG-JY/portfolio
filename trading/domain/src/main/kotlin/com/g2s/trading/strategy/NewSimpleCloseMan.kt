@@ -1,6 +1,6 @@
 package com.g2s.trading.strategy
 
-import com.g2s.trading.indicator.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
 import com.g2s.trading.event.PositionEvent
 import com.g2s.trading.event.StrategyEvent
 import com.g2s.trading.event.TradingEvent

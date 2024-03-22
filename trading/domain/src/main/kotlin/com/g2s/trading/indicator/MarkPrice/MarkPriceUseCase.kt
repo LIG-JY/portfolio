@@ -1,4 +1,4 @@
-package com.g2s.trading.indicator
+package com.g2s.trading.indicator.MarkPrice
 
 import com.g2s.trading.event.TradingEvent
 import com.g2s.trading.exchange.Exchange

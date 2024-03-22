@@ -1,7 +1,7 @@
 package com.g2s.trading.event
 
-import com.g2s.trading.indicator.MarkPrice
-import com.g2s.trading.indicator.indicator.CandleStick
+import com.g2s.trading.indicator.MarkPrice.MarkPrice
+import com.g2s.trading.indicator.CandleStick.CandleStick
 import org.springframework.context.ApplicationEvent
 
 sealed class TradingEvent(

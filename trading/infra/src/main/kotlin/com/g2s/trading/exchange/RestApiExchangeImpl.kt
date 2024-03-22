@@ -5,7 +5,7 @@ import com.binance.connector.futures.client.exceptions.BinanceClientException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.g2s.trading.indicator.MarkPrice
+import com.g2s.trading.indicator.MarkPrice.MarkPrice
 import com.g2s.trading.account.Account
 import com.g2s.trading.account.Asset
 import com.g2s.trading.account.AssetWallet

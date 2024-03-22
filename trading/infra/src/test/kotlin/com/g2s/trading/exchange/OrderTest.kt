@@ -1,7 +1,7 @@
 package com.g2s.trading.exchange
 
 import com.binance.connector.futures.client.impl.UMFuturesClientImpl
-import com.g2s.trading.indicator.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
 import com.g2s.trading.common.ObjectMapperProvider
 import com.g2s.trading.order.OrderSide
 import com.g2s.trading.order.OrderType

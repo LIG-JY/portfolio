@@ -1,6 +1,6 @@
 package com.g2s.trading.exchange
 
-import com.g2s.trading.indicator.MarkPrice
+import com.g2s.trading.indicator.MarkPrice.MarkPrice
 import com.g2s.trading.account.Account
 import com.g2s.trading.symbol.Symbol
 import com.g2s.trading.position.Position
