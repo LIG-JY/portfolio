@@ -1,0 +1,98 @@
+name: deploy
+# To automatically trigger a workflow, use "on" to define which events can cause the workflow to run
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        required: true
+        type: string
+        description: 'profile name of spring boot application'
+      branch:
+        required: true
+        type: string
+        description: 'branch to deploy'
+# A workflow run is made up of one or more "jobs", which run in parallel by default.
+jobs:
+  # "build" is job_id it is unique identifier
+  build:
+    # define the type of machine(runner) to run the job on.
+    runs-on: ubuntu-latest
+    # A job contains a sequence of tasks called "steps". Steps can run commands,
+    steps:
+      # step 1 : check-out
+      - name: check-out
+        # "uses" keyword is used within a "step" and specify it should use "actions"
+        uses: actions/checkout@v4 # This action checks-out your repository under $GITHUB_WORKSPACE, so your workflow can access it.
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      # step 2 : Set up JDK 17
+      - name: set up jdk temurin 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin' # See 'Supported distributions' for available options
+          java-version: '17'
+      # step 3: build with gradle
+      - name: build with gradle
+        run: | # pipe character in is used to define multiline string
+          chmod +x ./gradlew
+          ./gradlew clean build -x test
+      # step 4,5,6 : build and push the docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.dockerhub_username }}
+          password: ${{ secrets.dockerhub_token }}
+
+      - name: Build and Push Docker image based on profile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # This dynamically selects the tag based on the input profile
+          tags: ${{ secrets[format('{0}_DOCKER_IMAGE', github.event.inputs.profile)] }}
+      # step 8 : deploy
+      - name: Create .env file
+        run: |
+          echo "DOCKER_IMAGE=${{ secrets[format('{0}_docker_image', github.event.inputs.profile)] }}" >> .env
+          echo "SPRING_PROFILES_ACTIVE=${{ github.event.inputs.profile }}" >> .env
+          echo "BINANCE_APIKEY=${{ secrets[format('{0}_binance_apikey', github.event.inputs.profile)] }}" >> .env
+          echo "BINANCE_APISECRET=${{ secrets[format('{0}_binance_apisecret', github.event.inputs.profile)] }}" >> .env
+          echo "MONGODB_URI=${{ secrets[format('{0}_mongodb_uri', github.event.inputs.profile)] }}" >> .env
+
+      - name: Copy .env file to EC2
+        env:
+          SSH_HOST: ${{ secrets[format('{0}_ssh_host', github.event.inputs.profile)] }}
+          SSH_USER: ${{ secrets[format('{0}_ssh_user', github.event.inputs.profile)] }}
+          SSH_PEM_KEY: ${{ secrets[format('{0}_ssh_pem_key', github.event.inputs.profile)] }}
+        run: |
+          echo "$SSH_PEM_KEY" > $HOME/key.pem
+          chmod 400 $HOME/key.pem
+          scp -i $HOME/key.pem -o StrictHostKeyChecking=no .env $SSH_USER@$SSH_HOST:~/
+          rm -f $HOME/key.pem
+
+      - name: connect to ec2 and deploy
+        env:
+          SSH_HOST: ${{ secrets[format('{0}_ssh_host', github.event.inputs.profile)] }}
+          SSH_USER: ${{ secrets[format('{0}_ssh_user', github.event.inputs.profile)] }}
+          SSH_PEM_KEY: ${{ secrets[format('{0}_ssh_pem_key', github.event.inputs.profile)] }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$SSH_PEM_KEY" > $HOME/key.pem
+          chmod 400 $HOME/key.pem
+          ssh -i $HOME/key.pem -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << EOF
+            set -e
+            export DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
+            export DOCKERHUB_PASSWORD=${DOCKERHUB_PASSWORD}
+            sudo dnf install docker -y
+            sudo systemctl start docker
+            echo \$DOCKERHUB_PASSWORD | sudo -E docker login --username \$DOCKERHUB_USERNAME --password-stdin
+            sudo docker-compose down
+            sudo docker-compose pull
+            sudo docker-compose up -d
+            sudo docker image prune -a -f
+          EOF
+          rm -f $HOME/key.pem
