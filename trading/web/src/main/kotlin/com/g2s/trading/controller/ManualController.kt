@@ -1,7 +1,7 @@
 package com.g2s.trading.controller
 
 import com.g2s.trading.ManualTrader
-import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPriceUseCase
 import com.g2s.trading.account.Asset
 import com.g2s.trading.common.ObjectMapperProvider
 import com.g2s.trading.order.OrderSide
@@ -56,6 +56,7 @@ class ManualController(
                 symbolUseCase.getQuantityPrecision(symbol),
                 RoundingMode.CEILING
             ).toDouble(),
+            asset = Asset.USDT,
             referenceData = testNode
         )
         manualTrader.manuallyOpenPosition(position, tempSpec)

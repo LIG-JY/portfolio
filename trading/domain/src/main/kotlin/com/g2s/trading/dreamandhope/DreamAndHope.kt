@@ -27,7 +27,7 @@ class DreamAndHope(
                     }
                 }
         } catch (e: Exception) {
-            throw DreamAndHopeErrors.START_STRATEGY_ERROR.error("Failed to start strategy: $strategyKey", e)
+            throw DreamAndHopeErrors.START_STRATEGY_ERROR.error("Failed to start Strategy: $strategyKey", e)
         }
     }
 
@@ -41,7 +41,7 @@ class DreamAndHope(
                     }
                 }
         } catch (e: Exception) {
-            throw DreamAndHopeErrors.STOP_STRATEGY_ERROR.error("Failed to stop strategy: $strategyKey", e)
+            throw DreamAndHopeErrors.STOP_STRATEGY_ERROR.error("Failed to stop Strategy: $strategyKey", e)
         }
     }
 
@@ -52,7 +52,7 @@ class DreamAndHope(
                 .let { spec -> eventUseCase.publishEvent(StrategyEvent.UpdateStrategyEvent(spec)) }
         } catch (e: Exception) {
             throw DreamAndHopeErrors.UPDATE_STRATEGY_ERROR.error(
-                "Failed to update strategy: ${strategySpec.strategyKey}",
+                "Failed to update Strategy: ${strategySpec.strategyKey}",
                 e
             )
         }

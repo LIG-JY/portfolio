@@ -5,7 +5,7 @@ import com.binance.connector.futures.client.exceptions.BinanceClientException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.g2s.trading.indicator.MarkPrice.MarkPrice
+import com.g2s.trading.indicator.MarkPrice
 import com.g2s.trading.account.Account
 import com.g2s.trading.account.Asset
 import com.g2s.trading.account.AssetWallet
@@ -22,7 +22,8 @@ import org.springframework.stereotype.Component
 
 @Component
 class RestApiExchangeImpl(
-    private val binanceClient: UMFuturesClientImpl
+    private val binanceClient: UMFuturesClientImpl,
+    private val binanceOrderInfoTracker: BinanceOrderInfoTracker,
 ) : Exchange {
     private val logger = LoggerFactory.getLogger(this.javaClass)
     private val om = ObjectMapperProvider.get()
@@ -57,11 +58,59 @@ class RestApiExchangeImpl(
         return Account(assetWallets)
     }
 
+    override fun getAccount(timeStamp: Long): Account {
+        val parameters: LinkedHashMap<String, Any> = linkedMapOf(
+            "timestamp" to timeStamp.toString()
+        )
+        val bodyString = binanceClient.account().accountInformation(parameters)
+        val bodyJson = om.readTree(bodyString)
+
+        val assetWallets = (bodyJson.get("assets") as ArrayNode)
+            .filter { jsonNode ->
+                Asset.entries.map { it.name }.contains(jsonNode.get("asset").textValue())
+            }.map {
+                om.convertValue(it, AssetWallet::class.java)
+            }
+
+        return Account(assetWallets)
+    }
+
+    /**
+    orderResult :
+    {
+    "clientOrderId": "testOrder",
+    "cumQty": "0",
+    "cumQuote": "0",
+    "executedQty": "0",
+    "orderId": 22542179,
+    "avgPrice": "0.00000",
+    "origQty": "10",
+    "price": "0",
+    "reduceOnly": false,
+    "side": "BUY",
+    "positionSide": "SHORT",
+    "status": "NEW",
+    "stopPrice": "9300",        // please ignore when order type is TRAILING_STOP_MARKET
+    "closePosition": false,   // if Close-All
+    "symbol": "BTCUSDT",
+    "timeInForce": "GTD",
+    "type": "TRAILING_STOP_MARKET",
+    "origType": "TRAILING_STOP_MARKET",
+    "activatePrice": "9020",    // activation price, only return with TRAILING_STOP_MARKET order
+    "priceRate": "0.3",         // callback rate, only return with TRAILING_STOP_MARKET order
+    "updateTime": 1566818724722,
+    "workingType": "CONTRACT_PRICE",
+    "priceProtect": false,      // if conditional order trigger is protected
+    "priceMatch": "NONE",              //price match mode
+    "selfTradePreventionMode": "NONE", //self trading preventation mode
+    "goodTillDate": 1693207680000      //order pre-set auot cancel time for TIF GTD order
+    }
+     */
     override fun closePosition(position: Position) {
         val params = BinanceOrderParameterConverter.toBinanceClosePositionParam(position, positionMode, positionSide)
-        logger.debug("position closed\n symbol: ${position.symbol.value}\n amount: ${position.positionAmt}")
         try {
-            sendOrder(params)
+            val orderResult = sendOrder(params)
+            binanceOrderInfoTracker.setCloseOrderInfo(position, orderResult)
         } catch (e: OrderFailException) {
             throw e
         }
@@ -70,7 +119,8 @@ class RestApiExchangeImpl(
     override fun openPosition(position: Position) {
         val params = BinanceOrderParameterConverter.toBinanceOpenPositionParam(position, positionMode, positionSide)
         try {
-            sendOrder(params)
+            val orderResult = sendOrder(params)
+            binanceOrderInfoTracker.setOpenOrderInfo(position, orderResult)
         } catch (e: OrderFailException) {
             throw e
         }
@@ -88,9 +138,11 @@ class RestApiExchangeImpl(
         return position
     }
 
-    private fun sendOrder(params: LinkedHashMap<String, Any>) {
+    private fun sendOrder(params: LinkedHashMap<String, Any>): String {
         try {
-            binanceClient.account().newOrder(params)
+            val response: String = binanceClient.account().newOrder(params)
+            logger.debug(response)
+            return response
         } catch (e: BinanceClientException) {
             logger.warn("$params\n" + e.errMsg)
             throw OrderFailException("선물 주문 실패")
@@ -125,5 +177,33 @@ class RestApiExchangeImpl(
         return exchangeInfo.get("symbols")
             .find { node -> node.get("symbol").asText() == symbol.value }!!.get("filters")
             .find { node -> node.get("filterType").asText() == "MIN_NOTIONAL" }!!.get("notional").asDouble()
+    }
+
+    override fun getPositionOpeningTime(position: Position): Long {
+        val positionOpeningTime = binanceOrderInfoTracker.getOpenedPositionTransactionTime(position)
+        binanceOrderInfoTracker.removeOpenedPositionTransactionTime(position)
+
+        return positionOpeningTime
+    }
+
+    override fun getPositionClosingTime(position: Position): Long {
+        val positionClosingTime = binanceOrderInfoTracker.getClosedPositionTransactionTime(position)
+        binanceOrderInfoTracker.removeClosedPositionTransactionTime(position)
+
+        return positionClosingTime
+    }
+
+    override fun getClientIdAtOpen(position: Position): String {
+        val clientId = binanceOrderInfoTracker.getOpenClientId(position)
+        binanceOrderInfoTracker.removeOpenClientId(position)
+
+        return clientId
+    }
+
+    override fun getClientIdAtClose(position: Position): String {
+        val clientId = binanceOrderInfoTracker.getCloseClientId(position)
+        binanceOrderInfoTracker.removeCloseClientId(position)
+
+        return clientId
     }
 }

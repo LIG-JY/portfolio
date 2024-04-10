@@ -1,7 +1,8 @@
 package com.g2s.trading.exchange
 
 import com.binance.connector.futures.client.impl.UMFuturesClientImpl
-import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPriceUseCase
+import com.g2s.trading.account.Asset
 import com.g2s.trading.common.ObjectMapperProvider
 import com.g2s.trading.order.OrderSide
 import com.g2s.trading.order.OrderType
@@ -52,6 +53,7 @@ class OrderTest {
                 BigDecimal(markPrice),
                 symbolUseCase.getQuantityPrecision(symbol)
             ),
+            asset = Asset.USDT,
             referenceData = testNode
         )
         val responseJson = om.readTree(
@@ -83,6 +85,7 @@ class OrderTest {
                 BigDecimal(markPrice),
                 symbolUseCase.getQuantityPrecision(symbol)
             ),
+            asset = Asset.USDT,
             referenceData = testNode
         )
 

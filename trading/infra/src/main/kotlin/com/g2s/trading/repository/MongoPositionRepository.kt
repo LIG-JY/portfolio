@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.query.Query
 import org.springframework.stereotype.Component
 
 @Component
-class MongoPositionRepository(val mongoTemplate: MongoTemplate) : PositionRepository {
+class MongoPositionRepository(private val mongoTemplate: MongoTemplate) : PositionRepository {
 
     private val logger = LoggerFactory.getLogger(MongoStrategySpecRepository::class.java)
 
@@ -33,9 +33,9 @@ class MongoPositionRepository(val mongoTemplate: MongoTemplate) : PositionReposi
         val result = mongoTemplate.findAndReplace(query, position, options, POSITION_COLLECTION_NAME)
 
         if (result != null) {
-            logger.debug("A document was upserted or replaced.")
+            logger.debug("Position : A document was upserted or replaced.")
         } else {
-            logger.debug("No operation was performed.")
+            logger.debug("Position : No operation was performed.")
         }
     }
 

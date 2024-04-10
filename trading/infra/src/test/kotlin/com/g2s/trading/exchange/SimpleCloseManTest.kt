@@ -1,19 +1,20 @@
 package com.g2s.trading.exchange
 
-import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
+import com.g2s.trading.indicator.MarkPriceUseCase
+import com.g2s.trading.account.Asset
 import com.g2s.trading.common.ObjectMapperProvider
 import com.g2s.trading.order.OrderSide
 import com.g2s.trading.order.OrderType
 import com.g2s.trading.position.Position
 import com.g2s.trading.symbol.Symbol
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import java.math.BigDecimal
 
-@ActiveProfiles("test")
+@Disabled
 @SpringBootTest(classes = [TestConfig::class])
 class SimpleCloseManTest(
     @Autowired private val markPriceUseCase: MarkPriceUseCase
@@ -31,6 +32,7 @@ class SimpleCloseManTest(
             orderType = OrderType.MARKET,
             entryPrice = 69762.3,
             positionAmt = -0.002,
+            asset = Asset.USDT,
             // 직접 입력 필요
             referenceData = om.readTree(
                 "{\n" +

@@ -5,16 +5,17 @@ import com.binance.connector.futures.client.impl.UMFuturesClientImpl
 import com.binance.connector.futures.client.impl.UMWebsocketClientImpl
 import com.binance.connector.futures.client.utils.JSONParser
 import com.binance.connector.futures.client.utils.RequestHandler
-import com.g2s.trading.event.EventUseCase
-import com.g2s.trading.indicator.MarkPrice.MarkPrice
+
+import com.g2s.trading.indicator.MarkPrice
 import com.g2s.trading.event.TradingEvent
 import com.g2s.trading.account.Account
 import com.g2s.trading.account.AccountUseCase
 import com.g2s.trading.account.Asset
 import com.g2s.trading.account.AssetWallet
 import com.g2s.trading.common.ObjectMapperProvider
-import com.g2s.trading.indicator.CandleStick.CandleStick
-import com.g2s.trading.indicator.CandleStick.Interval
+import com.g2s.trading.event.EventUseCase
+import com.g2s.trading.indicator.CandleStick
+import com.g2s.trading.indicator.Interval
 import com.g2s.trading.position.PositionRefreshData
 import com.g2s.trading.position.PositionSide
 import com.g2s.trading.position.PositionUseCase
@@ -32,7 +33,8 @@ class ExchangeStream(
     private val eventUseCase: EventUseCase,
     private val positionUseCase: PositionUseCase,
     private val accountUseCase: AccountUseCase,
-    private val symbolUseCase: SymbolUseCase
+    private val symbolUseCase: SymbolUseCase,
+    private val binanceCommissionAndRealizedProfitTracker: BinanceCommissionAndRealizedProfitTracker
 ) {
     private val om = ObjectMapperProvider.get()
     private val pretty = om.writerWithDefaultPrettyPrinter()
@@ -130,7 +132,7 @@ class ExchangeStream(
                 BinanceUserStreamEventType.ACCOUNT_UPDATE.toString() -> {
                     val jsonBalanceAndPosition = eventJson.get("a")
                     val accountUpdateEventReasonType = jsonBalanceAndPosition.get("m").asText()
-                    // 계좌 변동
+                    // Account Update
                     val jsonBalances = jsonBalanceAndPosition.get("B")
                     val assetWallets = jsonBalances.filter { jsonBalance ->
                         Asset.entries.map { it.name }.contains(jsonBalance.get("a").asText())
@@ -142,17 +144,18 @@ class ExchangeStream(
                     }
                     val account = Account(assetWallets)
                     accountUseCase.refreshAccount(account)
+                    // Position Update
+                    val positionRefreshDataList = jsonBalanceAndPosition.get("P").map { node ->
+                        PositionRefreshData(
+                            symbol = Symbol.valueOf(node.get("s").asText()),
+                            entryPrice = node.get("ep").asDouble(),
+                            positionAmt = node.get("pa").asDouble(),
+                            positionSide = PositionSide.valueOf(node.get("ps").asText()),
+                        )
+                    }
                     // Event reason type == ORDER 일 때 포지션 데이터 변동
-                    if (accountUpdateEventReasonType == BinanceAccountUpdateEventReasonType.ORDER.toString()) {
-                        val positionRefreshDataList = jsonBalanceAndPosition.get("P").map { node ->
-                            PositionRefreshData(
-                                symbol = Symbol.valueOf(node.get("s").asText()),
-                                entryPrice = node.get("ep").asDouble(),
-                                positionAmt = node.get("pa").asDouble(),
-                                positionSide = PositionSide.valueOf(node.get("ps").asText())
-                            )
-                        }
-                        // PositionSide가 BOTH인 경우 positionRefreshDataList의 원소는 1개
+                    if (accountUpdateEventReasonType == BinanceAccountUpdateEventReasonType.ORDER.name) {
+                        // PositionSide가 BOTH인 경우 positionRefreshDataList의 원소는 1개임
                         assert(positionRefreshDataList.size == 1)
                         val positionRefreshData = positionRefreshDataList[0]
                         positionUseCase.refreshPosition(positionRefreshData)
@@ -168,13 +171,20 @@ class ExchangeStream(
                 BinanceUserStreamEventType.ORDER_TRADE_UPDATE.toString() -> {
                     val jsonOrder = eventJson.get("o")
                     val orderStatus = BinanceUserStreamOrderStatus.valueOf(jsonOrder.get("X").asText())
-                    // Order Status가 FILLED되면 refresh account and position
+                    val clientId = jsonOrder.get("c").asText()
+                    val realizedProfit = jsonOrder.get("rp").asDouble()
+                    binanceCommissionAndRealizedProfitTracker.updateRealizedProfit(clientId, realizedProfit)
+                    val commission = jsonOrder.get("n").asDouble()
+                    binanceCommissionAndRealizedProfitTracker.updateCommission(clientId, commission)
+                    // Order Status가 FILLED되면 refresh account and position | publish accumulatedCommision and accumulatedRP
                     if (orderStatus == BinanceUserStreamOrderStatus.FILLED) {
                         val symbol = Symbol.valueOf(jsonOrder.get("s").asText())
                         // sync position의 경우 열 때는 필요한데 닫을 때는 필요 없음
-                        positionUseCase.syncPosition(symbol)
+                        val transactionTime = jsonOrder.get("T").asLong()
+                        positionUseCase.syncPosition(symbol, transactionTime)
                         accountUseCase.syncAccount()
-                        logger.debug("ORDER_TRADE_UPDATE\n - position & account synced")
+                        binanceCommissionAndRealizedProfitTracker.publishAccumulatedCommission(clientId)
+                        binanceCommissionAndRealizedProfitTracker.publishRealizedProfitAndCommissionEvent(clientId)
                     }
                 }
             }

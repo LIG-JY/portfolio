@@ -1,38 +1,22 @@
 package com.g2s.trading.exchange
 
 import com.binance.connector.futures.client.impl.UMFuturesClientImpl
-import com.g2s.trading.indicator.MarkPrice.MarkPriceUseCase
+import org.junit.jupiter.api.Disabled
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 
-@Configuration
-class TestConfig {
-
-    @Value("\${binance.apiKey}")
-    private lateinit var apiKey: String
-
-    @Value("\${binance.apiSecret}")
-    private lateinit var apiSecret: String
-
-    @Value("\${binance.rest.url}")
-    private lateinit var restUrl: String
-
-    @Value("\${binance.wss.url}")
-    private lateinit var webSocketUrl: String
+@Disabled
+@TestConfiguration
+class TestConfig(
+    @Value("\${binance.apiKey}") private val apiKey: String,
+    @Value("\${binance.apiSecret}") private val apiSecret: String,
+    @Value("\${binance.rest.url}") private val restUrl: String,
+    @Value("\${binance.wss.url}") private val webSocketUrl: String
+) {
 
     @Bean
     fun umFuturesClientImpl(): UMFuturesClientImpl {
         return UMFuturesClientImpl(apiKey, apiSecret, restUrl)
-    }
-
-    @Bean
-    fun restApiExchange(umFuturesClientImpl: UMFuturesClientImpl): Exchange {
-        return RestApiExchangeImpl(umFuturesClientImpl)
-    }
-
-    @Bean
-    fun markPriceUseCase(restApiExchange: Exchange): MarkPriceUseCase {
-        return MarkPriceUseCase(restApiExchange)
     }
 }

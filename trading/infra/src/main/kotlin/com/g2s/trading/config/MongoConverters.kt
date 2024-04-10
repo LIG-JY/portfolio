@@ -11,6 +11,7 @@ import org.springframework.data.convert.ReadingConverter
 import org.springframework.data.convert.WritingConverter
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions
 import java.io.IOException
+import java.math.BigDecimal
 
 @Configuration
 class MongoConverters {
@@ -19,6 +20,8 @@ class MongoConverters {
         converters.add(ArrayNodeToDocumentListConverter())
         converters.add(JsonNodeToDocumentConverter())
         converters.add(DocumentToJsonNodeConverter())
+        converters.add(BigDecimalToStringConverter())
+        converters.add(StringToBigDecimalConverter())
         return MongoCustomConversions(converters)
     }
 
@@ -48,6 +51,20 @@ class MongoConverters {
             } catch (e: IOException) {
                 throw RuntimeException("Unable to parse DbObject to JsonNode", e)
             }
+        }
+    }
+
+    @WritingConverter
+    class BigDecimalToStringConverter : Converter<BigDecimal, String> {
+        override fun convert(source: BigDecimal): String {
+            return source.toString()
+        }
+    }
+
+    @ReadingConverter
+    class StringToBigDecimalConverter : Converter<String, BigDecimal> {
+        override fun convert(source: String): BigDecimal {
+            return BigDecimal(source)
         }
     }
 }

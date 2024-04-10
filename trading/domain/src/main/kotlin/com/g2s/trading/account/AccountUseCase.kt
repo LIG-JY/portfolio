@@ -39,6 +39,12 @@ class AccountUseCase(
         return BigDecimal(assetWallet.walletBalance)
     }
 
+    fun getBalance(asset: Asset, timeStamp: Long): Double {
+        val assetWallet = exchangeImpl.getAccount(timeStamp).assetWallets.first{it.asset == asset}
+
+        return assetWallet.walletBalance
+    }
+
 
     fun setUnSynced() {
         synced = false
